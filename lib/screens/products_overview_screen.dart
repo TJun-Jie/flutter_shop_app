@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_complete_guide/providers/cart.dart';
+import 'package:flutter_complete_guide/providers/products.dart';
 import 'package:flutter_complete_guide/screens/cart_screen.dart';
 import 'package:flutter_complete_guide/widgets/app_drawer.dart';
 import 'package:flutter_complete_guide/widgets/badge.dart';
@@ -22,7 +23,33 @@ class _ProductsOverViewScreenState extends State<ProductsOverViewScreen> {
   var _showOnlyFavorites = false;
 
   @override
+  void initState() {
+    super.initState();
+  }
+
+  var _isInit = true;
+  var _isLoading = false;
+
+  @override
+  void didChangeDependencies() {
+    // implement didChangeDependencies
+    super.didChangeDependencies();
+    if (_isInit) {
+      setState(() {
+        _isLoading = true;
+      });
+      Provider.of<Products>(context).fetchAndSetProducts().then((_) {
+        setState(() {
+          _isLoading = false;
+        });
+      });
+    }
+    _isInit = false;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    print('build');
     return Scaffold(
       appBar: AppBar(
         title: Text('MyShop'),
@@ -64,7 +91,11 @@ class _ProductsOverViewScreenState extends State<ProductsOverViewScreen> {
         ],
       ),
       drawer: AppDrawer(),
-      body: ProductsGrid(_showOnlyFavorites),
+      body: _isLoading
+          ? Center(
+              child: CircularProgressIndicator(),
+            )
+          : ProductsGrid(_showOnlyFavorites),
     );
   }
 }
