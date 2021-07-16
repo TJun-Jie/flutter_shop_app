@@ -14,6 +14,7 @@ enum FilterOptions {
 
 class ProductsOverViewScreen extends StatefulWidget {
   ProductsOverViewScreen({Key key}) : super(key: key);
+  static const routeName = '/products-overview';
 
   @override
   _ProductsOverViewScreenState createState() => _ProductsOverViewScreenState();
@@ -38,7 +39,9 @@ class _ProductsOverViewScreenState extends State<ProductsOverViewScreen> {
       setState(() {
         _isLoading = true;
       });
-      Provider.of<Products>(context).fetchAndSetProducts().then((_) {
+      Provider.of<Products>(context, listen: false)
+          .fetchAndSetProducts()
+          .then((_) {
         setState(() {
           _isLoading = false;
         });
@@ -49,7 +52,6 @@ class _ProductsOverViewScreenState extends State<ProductsOverViewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    print('build');
     return Scaffold(
       appBar: AppBar(
         title: Text('MyShop'),

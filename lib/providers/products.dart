@@ -5,7 +5,20 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class Products with ChangeNotifier {
+  var authToken;
+  var userId;
+
+  set userIdd(id) {
+    this.userId = id;
+    notifyListeners();
+  }
+
   List<Product> _items = [];
+
+  set auth(token) {
+    this.authToken = token;
+    notifyListeners();
+  }
 
   List<Product> get items {
     return [..._items];
@@ -19,9 +32,48 @@ class Products with ChangeNotifier {
     return _items.where((prodItem) => prodItem.isFavorite == true).toList();
   }
 
+  Future<void> fetchAndSetProducts([bool filterByUser = false]) async {
+    final filterString =
+        filterByUser ? '&orderBy="creatorId"&equalTo="$userId"' : '';
+    final url = Uri.parse(
+        'https://flutter-shop-app-6a672-default-rtdb.asia-southeast1.firebasedatabase.app/products.json?auth=$authToken$filterString');
+    try {
+      final res = await http.get(url);
+      final extractedData = jsonDecode(res.body) as Map<String, dynamic>;
+      if (extractedData == null) {
+        return;
+      }
+
+      final favoriteRequestUrl = Uri.parse(
+          'https://flutter-shop-app-6a672-default-rtdb.asia-southeast1.firebasedatabase.app/userFavorites/$userId.json?auth=$authToken');
+      final favoriteResponse = await http.get(favoriteRequestUrl);
+
+      final favoriteData = jsonDecode(favoriteResponse.body);
+
+      final List<Product> loadedProducts = [];
+      extractedData.forEach((prodId, prodData) {
+        loadedProducts.add(
+          Product(
+            id: prodId,
+            title: prodData['title'],
+            description: prodData['description'],
+            price: prodData['price'],
+            imageUrl: prodData['imageUrl'],
+            isFavorite:
+                favoriteData == null ? false : favoriteData[prodId] ?? false,
+          ),
+        );
+      });
+      _items = loadedProducts;
+      notifyListeners();
+    } catch (error) {
+      throw (error);
+    }
+  }
+
   Future<void> addProduct(Product product) async {
     final url = Uri.parse(
-        'https://flutter-shop-app-6a672-default-rtdb.asia-southeast1.firebasedatabase.app/products.json');
+        'https://flutter-shop-app-6a672-default-rtdb.asia-southeast1.firebasedatabase.app/products.json?auth=$authToken');
     try {
       final response = await http.post(
         url,
@@ -31,7 +83,7 @@ class Products with ChangeNotifier {
             'description': product.description,
             'imageUrl': product.imageUrl,
             'price': product.price,
-            'isFavorite': product.isFavorite,
+            'creatorId': userId,
           },
         ),
       );
@@ -55,7 +107,7 @@ class Products with ChangeNotifier {
     final prodIndex = _items.indexWhere((element) => element.id == id);
     if (prodIndex >= 0) {
       final url = Uri.parse(
-          'https://flutter-shop-app-6a672-default-rtdb.asia-southeast1.firebasedatabase.app/products/$id.json');
+          'https://flutter-shop-app-6a672-default-rtdb.asia-southeast1.firebasedatabase.app/products/$id.json?auth=$authToken');
       await http.patch(
         url,
         body: json.encode({
@@ -72,7 +124,7 @@ class Products with ChangeNotifier {
 
   Future<void> deleteProduct(String id) async {
     final url = Uri.parse(
-        'https://flutter-shop-app-6a672-default-rtdb.asia-southeast1.firebasedatabase.app/products/$id.');
+        'https://flutter-shop-app-6a672-default-rtdb.asia-southeast1.firebasedatabase.app/products/$id.json?auth=$authToken');
     final existingProductIndex = _items.indexWhere((prod) => prod.id == id);
     var existingProduct = _items[existingProductIndex];
     _items.removeAt(existingProductIndex);
@@ -84,34 +136,5 @@ class Products with ChangeNotifier {
       throw HttpException('Could not delete product.');
     }
     existingProduct = null;
-  }
-
-  Future<void> fetchAndSetProducts() async {
-    final url = Uri.parse(
-        'https://flutter-shop-app-6a672-default-rtdb.asia-southeast1.firebasedatabase.app/products.json');
-    try {
-      final res = await http.get(url);
-      final extractedData = jsonDecode(res.body) as Map<String, dynamic>;
-      if (extractedData == null) {
-        return;
-      }
-      final List<Product> loadedProducts = [];
-      extractedData.forEach((prodId, prodData) {
-        loadedProducts.add(
-          Product(
-            id: prodId,
-            title: prodData['title'],
-            description: prodData['description'],
-            price: prodData['price'],
-            imageUrl: prodData['imageUrl'],
-            isFavorite: prodData['isFavorite'],
-          ),
-        );
-      });
-      _items = loadedProducts;
-      notifyListeners();
-    } catch (error) {
-      throw (error);
-    }
   }
 }

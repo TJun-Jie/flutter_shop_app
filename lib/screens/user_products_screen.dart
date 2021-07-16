@@ -11,12 +11,14 @@ class UserProductsScreen extends StatelessWidget {
   static const routeName = '/user-products';
 
   Future<void> _refreshProducts(BuildContext context) async {
-    await Provider.of<Products>(context, listen: false).fetchAndSetProducts();
+    print('hi');
+    await Provider.of<Products>(context, listen: false)
+        .fetchAndSetProducts(true);
   }
 
   @override
   Widget build(BuildContext context) {
-    final productsData = Provider.of<Products>(context);
+    print('rebuilding');
     return Scaffold(
       appBar: AppBar(
         title: const Text('Your Products'),
@@ -29,29 +31,39 @@ class UserProductsScreen extends StatelessWidget {
           )
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () {
-          return _refreshProducts(context);
-        },
-        child: Padding(
-          child: ListView.builder(
-            itemBuilder: (_, i) {
-              return Column(
-                children: [
-                  UserProductItem(
-                    title: productsData.items[i].title,
-                    imageUrl: productsData.items[i].imageUrl,
-                    id: productsData.items[i].id,
-                    deleteHandler: productsData.deleteProduct,
+      body: FutureBuilder(
+        future: _refreshProducts(context),
+        builder: (ctx, snapshot) =>
+            snapshot.connectionState == ConnectionState.waiting
+                ? Center(
+                    child: CircularProgressIndicator(),
+                  )
+                : RefreshIndicator(
+                    onRefresh: () {
+                      return _refreshProducts(context);
+                    },
+                    child: Consumer<Products>(
+                      builder: (context, productsData, child) => Padding(
+                        child: ListView.builder(
+                          itemBuilder: (_, i) {
+                            return Column(
+                              children: [
+                                UserProductItem(
+                                  title: productsData.items[i].title,
+                                  imageUrl: productsData.items[i].imageUrl,
+                                  id: productsData.items[i].id,
+                                  deleteHandler: productsData.deleteProduct,
+                                ),
+                                Divider(),
+                              ],
+                            );
+                          },
+                          itemCount: productsData.items.length,
+                        ),
+                        padding: EdgeInsets.all(1),
+                      ),
+                    ),
                   ),
-                  Divider(),
-                ],
-              );
-            },
-            itemCount: productsData.items.length,
-          ),
-          padding: EdgeInsets.all(1),
-        ),
       ),
       drawer: AppDrawer(),
     );
